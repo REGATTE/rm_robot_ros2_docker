@@ -13,10 +13,12 @@ To build the container, run:
 
 ```bash
 # For x86 architecture
-docker build -t ros2-rm-robot .
+docker build -f Dockerfile.x86 -t ros2_rm_robot_x86 .
+```
 
-# For ARM architecture (e.g., Apple Silicon)
-docker build --platform linux/arm64 -t ros2-rm-robot .
+```bash
+# For amr64 architecture
+docker build -f Dockerfile.arm64 -t ros2_rm_robot_arm64 .
 ```
 
 ## Running the Container
@@ -30,7 +32,8 @@ docker run -it --rm \
     -e DISPLAY=$DISPLAY \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v /dev:/dev \
-    ros2-rm-robot
+    --user rm_user \
+    ros2_rm_robot_x86
 
 # For ARM architecture
 docker run -it --rm \
@@ -39,7 +42,8 @@ docker run -it --rm \
     -e DISPLAY=$DISPLAY \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v /dev:/dev \
-    ros2-rm-robot
+    --user rm_user \
+    ros2_rm_robot_arm64
 ```
 
 ## Running Examples

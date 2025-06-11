@@ -1,0 +1,109 @@
+FROM ubuntu:22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install basic dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg2 \
+    lsb-release \
+    software-properties-common \
+    git \
+    python3-pip \
+    apt-utils \
+    build-essential \
+    cmake \
+    sudo \
+    python3-wstool \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install -U \
+    colcon-common-extensions \
+    rosdep \
+    vcstool \
+    empy==3.3.4
+
+# Install ROS2 Humble
+RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null && \
+    apt-get update && apt-get install -y \
+    ros-humble-desktop-full \
+    ros-dev-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install MoveIt2 and its dependencies
+RUN apt-get update && apt-get install -y \
+    ros-humble-moveit \
+    ros-humble-moveit-* \
+    ros-humble-controller-interface \
+    ros-humble-controller-manager-msgs \
+    ros-humble-controller-manager \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up ROS2 environment
+ENV ROS_DISTRO=humble
+ENV ROS_VERSION=2
+ENV ROS_PYTHON_VERSION=3
+
+# Create a user with sudo privileges
+RUN useradd -m -s /bin/bash -G sudo rm_user && \
+    echo "rm_user:rm_password" | chpasswd && \
+    echo "rm_user ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Switch to the new user
+USER rm_user
+WORKDIR /home/rm_user
+
+# Source ROS2 Humble
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+
+# Clone the RealMan robot repository
+WORKDIR /home/rm_user/ros2_ws/src
+RUN git clone https://github.com/RealManRobot/ros2_rm_robot.git -b humble
+
+# Test ROS2 installation
+RUN bash -c 'source /opt/ros/humble/setup.bash && \
+    echo "Testing ROS2 installation..." && \
+    echo "ROS_DISTRO: $ROS_DISTRO" && \
+    echo "ROS_VERSION: $ROS_VERSION" && \
+    echo "ROS_PYTHON_VERSION: $ROS_PYTHON_VERSION" && \
+    echo "Testing ros2 command:" && \
+    ros2 --help && \
+    echo "Testing ros2 topic list:" && \
+    ros2 topic list'
+
+# Set working directory to cloned repo
+WORKDIR /home/rm_user/ros2_ws/src/ros2_rm_robot
+
+# Make install scripts executable
+RUN chmod +x rm_install/scripts/moveit2_install.sh && \
+    chmod +x rm_driver/lib/lib_install.sh
+
+# Install libapi_cpp.so
+RUN sudo rm -f /usr/local/lib/libapi_cpp.so* 2>/dev/null || true && \
+    if [ "$(uname -m)" = "x86_64" ]; then \
+        if [ -f "./rm_driver/lib/linux_x86_c++_v1.0.7/libapi_cpp.so" ]; then \
+            sudo cp ./rm_driver/lib/linux_x86_c++_v1.0.7/libapi_cpp.so /usr/local/lib/ && \
+            sudo cp ./rm_driver/lib/linux_x86_c++_v1.0.7/libapi_cpp.so ./rm_driver/lib/; \
+        else \
+            echo "Error: x86 libapi_cpp.so not found!" && exit 1; \
+        fi \
+    else \
+        if [ -f "./rm_driver/lib/linux_arm64_c++_v1.0.7/libapi_cpp.so" ]; then \
+            sudo cp ./rm_driver/lib/linux_arm64_c++_v1.0.7/libapi_cpp.so /usr/local/lib/ && \
+            sudo cp ./rm_driver/lib/linux_arm64_c++_v1.0.7/libapi_cpp.so ./rm_driver/lib/; \
+        else \
+            echo "Error: arm64 libapi_cpp.so not found!" && exit 1; \
+        fi \
+    fi && \
+    if ! grep -q "/usr/local/lib" /etc/ld.so.conf; then \
+        echo "/usr/local/lib" | sudo tee -a /etc/ld.so.conf; \
+    fi && \
+    sudo ldconfig
+
+# Final ROS sourcing setup
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+
+# Default to interactive bash with ROS sourced
+ENTRYPOINT ["/bin/bash", "-c", "source /opt/ros/humble/setup.bash && exec bash"]
