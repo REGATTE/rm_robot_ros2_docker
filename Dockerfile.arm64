@@ -55,9 +55,10 @@ RUN useradd -m -s /bin/bash -G sudo rm_user && \
 # Switch to the new user
 USER rm_user
 WORKDIR /home/rm_user
-
 # Source ROS2 Humble
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+
+RUN mkdir -p /home/rm_user/ros2_ws/src && chown -R rm_user:rm_user /home/rm_user/ros2_ws
 
 # Clone the RealMan robot repository
 WORKDIR /home/rm_user/ros2_ws/src

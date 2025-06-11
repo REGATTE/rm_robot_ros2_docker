@@ -13,12 +13,12 @@ To build the container, run:
 
 ```bash
 # For x86 architecture
-docker build -f Dockerfile.x86 -t ros2_rm_robot_x86 .
+docker build -f Dockerfile.x86 -t ros2_rm_robot:x86 .
 ```
 
 ```bash
 # For amr64 architecture
-docker build --platform linux/arm64 --network=host -f Dockerfile.arm64 -t ros2_rm_robot_arm64 .
+docker build --platform linux/arm64 --network=host -f Dockerfile.arm64 -t ros2_rm_robot:arm64 .
 ```
 
 ## Running the Container
@@ -28,22 +28,22 @@ To run the container with GUI support (for visualization tools like RViz and Gaz
 ```bash
 # For x86 architecture
 docker run -it --rm \
+    --net=host \
     --privileged \
     -e DISPLAY=$DISPLAY \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v /dev:/dev \
-    --user rm_user \
-    ros2_rm_robot_x86
+    ros2_rm_robot:x86
 
 # For ARM architecture
 docker run -it --rm \
+    --net=host \
     --platform linux/arm64 \
     --privileged \
     -e DISPLAY=$DISPLAY \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v /dev:/dev \
-    --user rm_user \
-    ros2_rm_robot_arm64
+    ros2_rm_robot:arm64
 ```
 
 ## Running Examples
@@ -52,10 +52,10 @@ Once inside the container, you can run the examples:
 
 ```bash
 # For virtual robot arm
-ros2 launch rm_bringup rm_65_gazebo.launch.py
+ros2 launch rm_bringup rm_75_gazebo.launch.py
 
 # For real robot arm
-ros2 launch rm_bringup rm_65_bringup.launch.py
+ros2 launch rm_bringup rm_75_bringup.launch.py
 ```
 
 ## Notes
