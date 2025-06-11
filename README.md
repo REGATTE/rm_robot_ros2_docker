@@ -18,7 +18,7 @@ docker build -f Dockerfile.x86 -t ros2_rm_robot_x86 .
 
 ```bash
 # For amr64 architecture
-docker build -f Dockerfile.arm64 -t ros2_rm_robot_arm64 .
+docker build --platform linux/arm64 --network=host -f Dockerfile.arm64 -t ros2_rm_robot_arm64 .
 ```
 
 ## Running the Container
